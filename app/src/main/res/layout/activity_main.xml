@@ -1,33 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<!-- activity_main.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
-    tools:context=".MainActivity">
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#e0e0e0">
 
-    <com.google.android.material.appbar.AppBarLayout
+    <!-- Отображение текущей остановки -->
+    <TextView
+        android:id="@+id/tvStop"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fitsSystemWindows="true">
+        android:text="Остановка: 1/5"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:padding="8dp"
+        android:background="#333333"
+        android:textColor="#ffffff" />
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize" />
-
-    </com.google.android.material.appbar.AppBarLayout>
-
-    <include layout="@layout/content_main" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="@dimen/fab_margin"
+    <!-- Двери автобуса -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:background="#666666"
         android:layout_marginBottom="16dp"
-        app:srcCompat="@android:drawable/ic_dialog_email" />
+        android:layout_marginTop="8dp">
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+        <ImageView
+            android:id="@+id/ivBusDoors"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#8B4513"
+            android:scaleType="fitXY" />
+
+    </RelativeLayout>
+
+    <!-- Область для отображения людей -->
+    <LinearLayout
+        android:id="@+id/layoutPeople"
+        android:layout_width="match_parent"
+        android:layout_height="150dp"
+        android:orientation="vertical"
+        android:background="#ffffff"
+        android:padding="8dp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- История -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/tvStory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:lineSpacingMultiplier="1.2"
+            android:padding="8dp"
+            android:background="#ffffff" />
+
+    </ScrollView>
+
+    <!-- Поле ввода -->
+    <EditText
+        android:id="@+id/etAnswer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Введите количество"
+        android:inputType="number"
+        android:visibility="gone"
+        android:layout_marginTop="16dp" />
+
+    <Button
+        android:id="@+id/btnSubmit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ответить"
+        android:visibility="gone"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>

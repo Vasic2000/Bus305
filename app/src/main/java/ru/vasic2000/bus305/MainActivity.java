@@ -1,77 +1,374 @@
 package ru.vasic2000.bus305;
 
+import android.graphics.Color;
 import android.os.Bundle;
-
-import com.google.android.material.snackbar.Snackbar;
-
-import androidx.appcompat.app.AppCompatActivity;
-
+import android.os.Handler;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
-import ru.vasic2000.bus305.databinding.ActivityMainBinding;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
-import android.view.Menu;
-import android.view.MenuItem;
-
+// MainActivity.java
 public class MainActivity extends AppCompatActivity {
+    private TextView tvStory, tvStop;
+    private EditText etAnswer;
+    private Button btnSubmit;
+    private ImageView ivBusDoors;
+    private LinearLayout layoutPeople;
 
-    private AppBarConfiguration appBarConfiguration;
-    private ActivityMainBinding binding;
+    private int currentStop = 1;
+    private List<String> passengers = new ArrayList<>(); // "M", "F", "C"
+    private Random random = new Random();
+    private Handler handler = new Handler();
+    private int score = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        initializeViews();
+        startGame();
 
-        setSupportActionBar(binding.toolbar);
+        btnSubmit.setOnClickListener(v -> checkAnswer());
+    }
 
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+    private void initializeViews() {
+        tvStory = findViewById(R.id.tvStory);
+        tvStop = findViewById(R.id.tvStop);
+        etAnswer = findViewById(R.id.etAnswer);
+        btnSubmit = findViewById(R.id.btnSubmit);
+        ivBusDoors = findViewById(R.id.ivBusDoors);
+        layoutPeople = findViewById(R.id.layoutPeople);
+    }
 
-        binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAnchorView(R.id.fab)
-                        .setAction("Action", null).show();
+    private void startGame() {
+        passengers.clear();
+        currentStop = 1;
+        score = 0;
+        updateStopDisplay();
+
+        showMessage("Автобус на остановке 1. Автобус пустой.");
+
+        handler.postDelayed(() -> {
+            openDoors();
+            showMessage("Двери открываются...");
+        }, 1000);
+
+        handler.postDelayed(() -> {
+            // Первая остановка - только взрослые заходят
+            int peopleCount = random.nextInt(5) + 1;
+            for (int i = 0; i < peopleCount; i++) {
+                if (random.nextBoolean()) {
+                    passengers.add("M");
+                } else {
+                    passengers.add("F");
+                }
             }
-        });
+            showPeople("Заходят:", passengers);
+        }, 3000);
+
+        handler.postDelayed(() -> {
+            closeDoors();
+            showMessage("Двери закрываются...");
+        }, 6000);
+
+        handler.postDelayed(this::nextStop, 8000);
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
+    private void nextStop() {
+        currentStop++;
+        updateStopDisplay();
+
+        if (currentStop <= 5) {
+            showStopAction();
+        }
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+    private void showStopAction() {
+        showMessage("Остановка " + currentStop);
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        handler.postDelayed(() -> {
+            openDoors();
+            showMessage("Двери открываются...");
+        }, 1000);
+
+        handler.postDelayed(() -> {
+            // Люди выходят
+            List<String> exiting = getExitingPeople();
+            // Люди заходят
+            List<String> entering = getEnteringPeople();
+
+            // Обновляем пассажиров
+            passengers.removeAll(exiting);
+            passengers.addAll(entering);
+
+            showPeopleMovement(exiting, entering);
+
+        }, 3000);
+
+        handler.postDelayed(() -> {
+            closeDoors();
+            showMessage("Двери закрываются...");
+        }, 8000);
+
+        handler.postDelayed(this::askQuestion, 10000);
+    }
+
+    private List<String> getExitingPeople() {
+        List<String> exiting = new ArrayList<>();
+        if (passengers.isEmpty()) return exiting;
+
+        // От 0 до всех могут выйти, но на последних остановках можно выпускать больше
+        int maxCanExit = Math.min(passengers.size(), currentStop);
+        int exitCount = random.nextInt(maxCanExit + 1);
+
+        for (int i = 0; i < exitCount; i++) {
+            if (!passengers.isEmpty()) {
+                int index = random.nextInt(passengers.size());
+                exiting.add(passengers.get(index));
+            }
+        }
+        return exiting;
+    }
+
+    private List<String> getEnteringPeople() {
+        List<String> entering = new ArrayList<>();
+        int peopleCount = random.nextInt(5) + 1;
+
+        for (int i = 0; i < peopleCount; i++) {
+            // После 3 остановки могут заходить дети
+            if (currentStop > 3 && random.nextDouble() < 0.3) {
+                entering.add("C"); // Ребенок
+            } else {
+                if (random.nextBoolean()) {
+                    entering.add("M");
+                } else {
+                    entering.add("F");
+                }
+            }
+        }
+        return entering;
+    }
+
+    private void showPeopleMovement(List<String> exiting, List<String> entering) {
+        layoutPeople.removeAllViews();
+        StringBuilder story = new StringBuilder();
+
+        if (!exiting.isEmpty()) {
+            story.append("Выходят:\n");
+            for (String person : exiting) {
+                String display = getPersonDisplay(person);
+                addPersonView(display, getColorForPerson(person));
+                story.append(display).append("\n");
+            }
         }
 
-        return super.onOptionsItemSelected(item);
+        if (!entering.isEmpty()) {
+            story.append(entering.isEmpty() ? "" : "\n").append("Заходят:\n");
+            for (String person : entering) {
+                String display = getPersonDisplay(person);
+                addPersonView(display, getColorForPerson(person));
+                story.append(display).append("\n");
+            }
+        }
+
+        tvStory.setText(story.toString());
     }
 
-    @Override
-    public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        return NavigationUI.navigateUp(navController, appBarConfiguration)
-                || super.onSupportNavigateUp();
+    private void showPeople(String title, List<String> people) {
+        layoutPeople.removeAllViews();
+        StringBuilder story = new StringBuilder(title + "\n");
+
+        for (String person : people) {
+            String display = getPersonDisplay(person);
+            addPersonView(display, getColorForPerson(person));
+            story.append(display).append("\n");
+        }
+
+        tvStory.setText(story.toString());
+    }
+
+    private String getPersonDisplay(String person) {
+        switch (person) {
+            case "M": return "👨 Мужчина";
+            case "F": return "👩 Женщина";
+            case "C": return "👶 Ребенок";
+            default: return "";
+        }
+    }
+
+    private int getColorForPerson(String person) {
+        switch (person) {
+            case "M": return R.color.male_color;
+            case "F": return R.color.female_color;
+            case "C": return R.color.child_color;
+            default: return R.color.default_color;
+        }
+    }
+
+    private void askQuestion() {
+        if (currentStop >= 5) {
+            // Последняя остановка - специальный вопрос
+            askFinalQuestion();
+        } else {
+            askRegularQuestion();
+        }
+    }
+
+    private void askRegularQuestion() {
+        int questionType = random.nextInt(4);
+        String question;
+        int correctAnswer;
+
+        switch (questionType) {
+            case 0:
+                question = "Сколько МУЖЧИН в автобусе?";
+                correctAnswer = countPeople("M");
+                break;
+            case 1:
+                question = "Сколько ЖЕНЩИН в автобусе?";
+                correctAnswer = countPeople("F");
+                break;
+            case 2:
+                question = "Сколько ДЕТЕЙ в автобусе?";
+                correctAnswer = countPeople("C");
+                break;
+            default:
+                question = "Сколько ВСЕГО человек в автобусе?";
+                correctAnswer = passengers.size();
+                break;
+        }
+
+        showQuestion(question, correctAnswer);
+    }
+
+    private void askFinalQuestion() {
+        String question = "Сколько человек осталось в автобусе?";
+        int correctAnswer = passengers.size();
+        showQuestion(question, correctAnswer);
+    }
+
+    private void showQuestion(String question, int correctAnswer) {
+        layoutPeople.removeAllViews();
+        showMessage(question);
+        etAnswer.setVisibility(View.VISIBLE);
+        btnSubmit.setVisibility(View.VISIBLE);
+        etAnswer.setTag(correctAnswer);
+    }
+
+    private int countPeople(String type) {
+        int count = 0;
+        for (String person : passengers) {
+            if (person.equals(type)) count++;
+        }
+        return count;
+    }
+
+    private void addPersonView(String text, int colorRes) {
+        TextView personView = new TextView(this);
+        personView.setText(text);
+        personView.setTextSize(16);
+        personView.setPadding(20, 10, 20, 10);
+        personView.setBackgroundColor(ContextCompat.getColor(this, colorRes));
+        personView.setTextColor(Color.WHITE);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, 5, 0, 5);
+        personView.setLayoutParams(params);
+
+        layoutPeople.addView(personView);
+    }
+
+    private void showMessage(String message) {
+        tvStory.setText(message);
+    }
+
+    private void updateStopDisplay() {
+        tvStop.setText("Остановка: " + currentStop + "/5");
+    }
+
+    private void openDoors() {
+        ivBusDoors.animate().scaleY(0.1f).setDuration(1000);
+    }
+
+    private void closeDoors() {
+        ivBusDoors.animate().scaleY(1.0f).setDuration(1000);
+    }
+
+    private void checkAnswer() {
+        try {
+            int answer = Integer.parseInt(etAnswer.getText().toString());
+            int correctAnswer = (int) etAnswer.getTag();
+
+            if (answer == correctAnswer) {
+                score++;
+                if (currentStop >= 5) {
+                    showVictory();
+                } else {
+                    showSuccess();
+                    handler.postDelayed(this::nextStop, 2000);
+                }
+            } else {
+                showGameOver();
+            }
+
+        } catch (NumberFormatException e) {
+            etAnswer.setError("Введите число!");
+        }
+    }
+
+    private void showSuccess() {
+        etAnswer.setVisibility(View.GONE);
+        btnSubmit.setVisibility(View.GONE);
+        showMessage("✅ Правильно! Счет: " + score);
+    }
+
+    private void showVictory() {
+        new AlertDialog.Builder(this)
+                .setTitle("🎉 Победа!")
+                .setMessage("Вы выиграли!\nФинальный счет: " + score + "/5\n\nВсе пассажиры: " + getPassengerDetails())
+                .setPositiveButton("Новая игра", (dialog, which) -> restartGame())
+                .setCancelable(false)
+                .show();
+    }
+
+    private void showGameOver() {
+        new AlertDialog.Builder(this)
+                .setTitle("❌ Конец игры")
+                .setMessage("Неправильный ответ!\nВаш счет: " + score + "\n\nПравильный ответ: " + etAnswer.getTag() +
+                        "\n" + getPassengerDetails())
+                .setPositiveButton("Новая игра", (dialog, which) -> restartGame())
+                .setCancelable(false)
+                .show();
+    }
+
+    private String getPassengerDetails() {
+        int men = countPeople("M");
+        int women = countPeople("F");
+        int children = countPeople("C");
+        return "Мужчин: " + men + ", Женщин: " + women + ", Детей: " + children + ", Всего: " + passengers.size();
+    }
+
+    private void restartGame() {
+        passengers.clear();
+        etAnswer.setText("");
+        etAnswer.setVisibility(View.GONE);
+        btnSubmit.setVisibility(View.GONE);
+        layoutPeople.removeAllViews();
+        startGame();
     }
 }
